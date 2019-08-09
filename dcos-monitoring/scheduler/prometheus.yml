@@ -1,0 +1,48 @@
+global:
+  scrape_interval: {{SCRAPE_INTERVAL}}s
+  scrape_timeout: {{SCRAPE_TIMEOUT}}s
+
+  # The labels to add to any time series or alerts when communicating with
+  # external systems (federation, remote storage, Alertmanager).
+  external_labels:
+    monitor: '{{FRAMEWORK_NAME}}'
+
+# A list of scrape configurations.
+scrape_configs:
+  - job_name: agent-metrics
+    # All agent nodes are written regularly to discovery/agents.json
+    file_sd_configs:
+      - files: ['discovery/agents.json']
+
+  - job_name: master-metrics
+    # All master nodes are available at master.mesos via their A record
+    dns_sd_configs:
+      - names: ['master.mesos']
+        type: 'A'
+        port: {{PROMETHEUS_DCOS_METRICS_NODE_PORT}}
+
+  # Self monitor
+  - job_name: prometheus
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: pushgateway
+    honor_labels: true
+    scrape_interval: 15s
+    dns_sd_configs:
+    - names: ['pushgateway-0-server.{{FRAMEWORK_HOST}}']
+      type: 'A'
+      port: 9091
+
+# Alerting specifies settings related to the Alertmanager.
+alerting:
+  alertmanagers:
+    - static_configs:
+      - targets: ['alertmanager-0-server.{{FRAMEWORK_HOST}}:9093']
+
+# Rule files specifies a list of globs. Rules and alerts are read from
+# all matching files.
+rule_files:
+    # set of rule files to read alerting rules from
+    -  'rules/*.yml'
